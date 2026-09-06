@@ -1,6 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
+const { extractLocalityFromUrl, extractLocalityFromPostalCode } = require("../localityUtil");
 
 // ATTENTION: contrairement aux autres scrapers, celui-ci n'a pas pu etre verifie
 // contre le vrai HTML du site (probleme de redirection lors des tests). C'est un
@@ -38,9 +39,9 @@ async function scrapeRoufosse(criteria) {
       if (!href) return;
       if (isIrrelevantHref(href)) return;
       if (/\/(contact|estimation|about|nos-services|equipe)/i.test(href)) return;
-      const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
-      if (!idMatch) return;
-      const id = `roufosse-${idMatch[1]}`;
+      const path = href.split("?")[0];
+      const idMatch = path.match(/(\d{4,})/);
+      const id = idMatch ? `roufosse-${idMatch[1]}` : `roufosse-${path}`;
       if (seenIdsThisPage.has(id)) return;
       seenIdsThisPage.add(id);
 
@@ -48,9 +49,10 @@ async function scrapeRoufosse(criteria) {
       const cardText = card.text().replace(/\s+/g, " ").trim();
       const priceMatch = cardText.match(/([\d.,]{4,})\s*€/);
       const bedroomMatch = cardText.match(/(\d+)\s*(ch\.|chambre)/i);
-      const localityMatch = cardText.match(
-        new RegExp(`(${criteria.localites.join("|")})`, "i")
-      );
+      const locality =
+        extractLocalityFromUrl(href, criteria.localites) ||
+        extractLocalityFromPostalCode(cardText, criteria.localites) ||
+        null;
 
       results.push({
         id,
@@ -60,7 +62,7 @@ async function scrapeRoufosse(criteria) {
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,
-        locality: localityMatch ? localityMatch[1] : null,
+        locality,
       });
     });
   } catch (err) {

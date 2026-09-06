@@ -3,10 +3,9 @@ const cheerio = require("cheerio");
 const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromUrl, extractLocalityFromPostalCode } = require("../localityUtil");
 
-// ATTENTION: scraper "best effort", structure HTML non verifiee en detail (pas de
-// fetch de test reussi/complet sur ce site). A TESTER avec /scan ou npm run once -
-// si 0 resultat en continu alors que tu sais qu'il y a des biens en vente, ouvre le
-// site dans ton navigateur, F12 > Elements, et adapte les selecteurs ci-dessous.
+// ERA (confirme): URLs sans ID numerique, juste des slugs texte
+// (ex: /fr/a-vendre/ivoz-ramet/maison/a-vendre-le-bonheur-en-grand-a-ivoz-ramet).
+// On utilise le chemin complet comme identifiant plutot qu'un ID numerique.
 
 const HEADERS = {
   "User-Agent":
@@ -24,22 +23,25 @@ async function scrapeEra(criteria) {
     const $ = cheerio.load(html);
     const seenIdsThisPage = new Set();
 
-    $("a").each((_, el) => {
+    $("a[href*='/a-vendre/']").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
       if (isIrrelevantHref(href)) return;
-      if (/\/(contact|estimation|about|nos-services|equipe|a-louer|mentions-legales|cookies)/i.test(href)) return;
-      const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
-      if (!idMatch) return;
-      const id = `era-${idMatch[1]}`;
+      const path = href.split("?")[0];
+      if (path === "/fr/a-vendre" || path === "/fr/a-vendre/") return;
+      const segments = path.split("/").filter(Boolean);
+      if (segments.length < 4) return; // veut /fr/a-vendre/<ville>/<type>/<titre>
+
+      const idMatch = path.match(/(\d{4,})/);
+      const id = idMatch ? `era-${idMatch[1]}` : `era-${path}`;
       if (seenIdsThisPage.has(id)) return;
       seenIdsThisPage.add(id);
 
       const card = $(el).parent().parent();
       const cardText = card.text().replace(/\s+/g, " ").trim();
-      const priceMatch = cardText.match(/([\d.,]{4,})\s*€/);
-      const bedroomMatch = cardText.match(/(\d+)\s*(ch\.|chambre)/i);
-      const terrainMatch = cardText.match(/terrain[^\d]{0,15}(\d[\d.,]*)\s*m²/i);
+      const priceMatch = cardText.match(/€\s*([\d][\d.,]{3,})/);
+      const bedroomMatch = cardText.match(/(\d+)\s*chbre/i);
+      const terrainMatch = cardText.match(/(\d[\d.,]*)\s*m²\s*de\s*surface\s*de\s*terrain/i);
 
       const locality =
         extractLocalityFromUrl(href, criteria.localites) ||

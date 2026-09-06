@@ -38,9 +38,9 @@ async function scrapeNotaire(criteria) {
       if (!href) return;
       if (isIrrelevantHref(href)) return;
       if (/\/(contact|estimation|about|nos-services|equipe|a-louer|mentions-legales|cookies)/i.test(href)) return;
-      const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
-      if (!idMatch) return;
-      const id = `notaire-${idMatch[1]}`;
+      const path = href.split("?")[0];
+      const idMatch = path.match(/(\d{4,})/);
+      const id = idMatch ? `notaire-${idMatch[1]}` : `notaire-${path}`;
       if (seenIdsThisPage.has(id)) return;
       seenIdsThisPage.add(id);
 

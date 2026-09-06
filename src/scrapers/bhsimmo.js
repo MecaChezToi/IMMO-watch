@@ -1,6 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
+const { extractLocalityFromUrl, extractLocalityFromPostalCode } = require("../localityUtil");
 
 // ATTENTION: ce scraper n'a pas pu etre verifie contre le vrai HTML du site -
 // bhsimmo.be a un robots.txt qui bloque explicitement l'acces automatise, donc
@@ -51,9 +52,10 @@ async function scrapeBhsImmo(criteria) {
       const cardText = card.text().replace(/\s+/g, " ").trim();
       const priceMatch = cardText.match(/([\d.,]{4,})\s*€/);
       const bedroomMatch = cardText.match(/(\d+)\s*(ch\.|chambre)/i);
-      const localityMatch = cardText.match(
-        new RegExp(`(${criteria.localites.join("|")})`, "i")
-      );
+      const locality =
+        extractLocalityFromUrl(href, criteria.localites) ||
+        extractLocalityFromPostalCode(cardText, criteria.localites) ||
+        null;
 
       results.push({
         id,
@@ -63,7 +65,7 @@ async function scrapeBhsImmo(criteria) {
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,
-        locality: localityMatch ? localityMatch[1] : null,
+        locality,
       });
     });
   } catch (err) {
