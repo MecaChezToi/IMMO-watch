@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { loadCriteria, saveCriteria } = require("./criteriaStore");
 const { runScan } = require("./scanner");
+const { clearSeenIds } = require("./store");
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -47,6 +48,7 @@ const HELP_TEXT =
   `/mots_exclus ruine, à rénover — annonces contenant un de ces mots dans le titre sont ignorées (vide = aucun filtre)\n` +
   `/criteres — affiche les critères actuels\n` +
   `/scan — lance un scan immédiat, sans attendre le prochain cycle\n` +
+  `/reset — efface l'historique des annonces vues (le prochain scan retraite tout comme neuf)\n` +
   `/aide — affiche ce message`;
 
 async function handleCommand(text) {
@@ -135,6 +137,13 @@ async function handleCommand(text) {
         console.error("[telegram-commands] erreur /scan:", err.message);
         return sendReply("⚠️ Le scan a échoué, regarde les logs.");
       }
+    }
+
+    case "/reset": {
+      clearSeenIds();
+      return sendReply(
+        "🗑️ Historique des annonces vues effacé. Le prochain /scan (ou le prochain cycle automatique) va retraiter TOUTES les annonces actuellement en ligne comme si elles étaient nouvelles — utile pour vérifier que le filtrage marche, mais attends-toi à une notif par annonce qui matche vraiment tes critères, potentiellement plusieurs d'un coup."
+      );
     }
 
     case "/aide":

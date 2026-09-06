@@ -15,6 +15,7 @@ Scanne Immoweb, Immovlan et Zimmo selon tes critères, et t'envoie une notif Tel
 /localites Liège, Flémalle, Seraing, Herstal, Ans, Grâce-Hollogne
 /criteres          → affiche les critères actuels
 /scan              → lance un scan immédiat, sans attendre les 30 min
+/reset             → efface l'historique des annonces vues (le prochain scan retraite tout)
 /aide              → liste des commandes
 ```
 

@@ -29,4 +29,9 @@ function saveSeenIds(idsSet) {
   fs.writeFileSync(STORE_FILE, JSON.stringify(arr, null, 2));
 }
 
-module.exports = { loadSeenIds, saveSeenIds };
+function clearSeenIds() {
+  ensureStore();
+  fs.writeFileSync(STORE_FILE, JSON.stringify([]));
+}
+
+module.exports = { loadSeenIds, saveSeenIds, clearSeenIds };
