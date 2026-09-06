@@ -43,6 +43,7 @@ const HELP_TEXT =
   `/superficie_terrain 500 — superficie de terrain minimum (m²)\n` +
   `/superficie_habitable 90 — surface habitable minimum (m²)\n` +
   `/localites Liège, Flémalle, Seraing — remplace la liste des villes (séparées par des virgules)\n` +
+  `/mots_exclus ruine, à rénover — annonces contenant un de ces mots dans le titre sont ignorées (vide = aucun filtre)\n` +
   `/criteres — affiche les critères actuels\n` +
   `/aide — affiche ce message`;
 
@@ -100,6 +101,19 @@ async function handleCommand(text) {
       criteria.localites = villes;
       saveCriteria(criteria);
       return sendReply(`✅ Localités mises à jour: ${villes.join(", ")}`);
+    }
+
+    case "/mots_exclus": {
+      const mots = arg
+        ? arg.split(",").map((m) => m.trim()).filter(Boolean)
+        : [];
+      criteria.mots_cles_exclus = mots;
+      saveCriteria(criteria);
+      return sendReply(
+        mots.length
+          ? `✅ Mots exclus mis à jour: ${mots.join(", ")}`
+          : `✅ Mots exclus vidés — plus aucun mot-clé n'est filtré.`
+      );
     }
 
     case "/criteres":
