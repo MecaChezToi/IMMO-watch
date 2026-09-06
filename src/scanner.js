@@ -12,6 +12,7 @@ const { scrapeEcoImmo } = require("./scrapers/ecoimmo");
 const { scrapeIgg } = require("./scrapers/igg");
 const { scrapeSkyImmo } = require("./scrapers/skyimmo");
 const { scrapeNotaire } = require("./scrapers/notaire");
+const { scrapeCnal } = require("./scrapers/cnal");
 const { loadSeenIds, saveSeenIds } = require("./store");
 const { notifyListing } = require("./telegram");
 const { enrichFromDetailPage } = require("./detailFetcher");
@@ -134,8 +135,23 @@ async function runScanInterne() {
   if (criteria.sites_actifs?.notaire) {
     allListings = allListings.concat(await scrapeNotaire(criteria));
   }
+  if (criteria.sites_actifs?.cnal) {
+    allListings = allListings.concat(await scrapeCnal(criteria));
+  }
 
   console.log(`[scan] ${allListings.length} annonces recuperees au total`);
+
+  // Detail brut par site (avant tout filtre) - permet de voir si un scraper ne
+  // remonte carrement rien, plutot que de deviner a partir du nombre de candidats.
+  const brutParSite = {};
+  for (const listing of allListings) {
+    brutParSite[listing.source] = (brutParSite[listing.source] || 0) + 1;
+  }
+  console.log(
+    `[scan] brut par site: ${Object.entries(brutParSite)
+      .map(([source, n]) => `${source}=${n}`)
+      .join(", ")}`
+  );
 
   const sansPrix = allListings.filter((l) => !l.price).length;
   const sansChambres = allListings.filter((l) => !l.bedrooms).length;

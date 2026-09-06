@@ -46,6 +46,7 @@ const HELP_TEXT =
   `/superficie_habitable 90 — surface habitable minimum (m²)\n` +
   `/localites Liège, Flémalle, Seraing — remplace la liste des villes (séparées par des virgules)\n` +
   `/mots_exclus ruine, à rénover — annonces contenant un de ces mots dans le titre sont ignorées (vide = aucun filtre)\n` +
+  `/site immoweb off — active/désactive un site precis (immoweb, immovlan, zimmo, immodemarneffe, roufosse, bhsimmo, elimmo, agimmobiliere, era, infinityimmo, ecoimmo, igg, skyimmo, notaire, cnal)\n` +
   `/criteres — affiche les critères actuels\n` +
   `/scan — lance un scan immédiat, sans attendre le prochain cycle\n` +
   `/reset — efface l'historique des annonces vues (le prochain scan retraite tout comme neuf)\n` +
@@ -118,6 +119,23 @@ async function handleCommand(text) {
           ? `✅ Mots exclus mis à jour: ${mots.join(", ")}`
           : `✅ Mots exclus vidés — plus aucun mot-clé n'est filtré.`
       );
+    }
+
+    case "/site": {
+      const [nomSite, etat] = arg.split(/\s+/);
+      if (!nomSite || !etat || !["on", "off"].includes(etat.toLowerCase())) {
+        return sendReply("⚠️ Usage: /site <nom> on|off, ex: /site immoweb off");
+      }
+      if (!criteria.sites_actifs || !(nomSite in criteria.sites_actifs)) {
+        return sendReply(
+          `⚠️ Site inconnu "${nomSite}". Sites disponibles: ${Object.keys(
+            criteria.sites_actifs || {}
+          ).join(", ")}`
+        );
+      }
+      criteria.sites_actifs[nomSite] = etat.toLowerCase() === "on";
+      saveCriteria(criteria);
+      return sendReply(`✅ ${nomSite}: ${etat.toLowerCase() === "on" ? "activé" : "désactivé"}`);
     }
 
     case "/criteres":
