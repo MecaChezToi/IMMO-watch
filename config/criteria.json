@@ -1,0 +1,28 @@
+{
+  "_comment": "C'est ICI que tu regles tout toi-meme: prix, chambres, localites. Sur ton VPS, ce fichier tourne depuis l'image Docker deployee -> pour qu'un changement soit pris en compte, edite ce fichier, git commit + push, puis redeploie sur Coolify. Le bot relit ce fichier a chaque scan, pas besoin de redemarrer apres un redeploiement.",
+
+  "localites": ["Liège", "Flémalle", "Seraing", "Herstal", "Ans", "Grâce-Hollogne"],
+  "rayon_km": 15,
+
+  "type_bien": "house",
+  "transaction": "for-sale",
+
+  "prix_min": 0,
+  "prix_max": 225000,
+
+  "chambres_min": 4,
+
+  "superficie_habitable_min_m2": 0,
+  "superficie_terrain_min_m2": 500,
+
+  "mots_cles_exclus": ["a renover completement", "ruine"],
+
+  "sites_actifs": {
+    "immoweb": true,
+    "immovlan": true,
+    "zimmo": true,
+    "immodemarneffe": true,
+    "roufosse": true,
+    "bhsimmo": true
+  }
+}
