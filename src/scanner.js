@@ -159,6 +159,17 @@ async function runScanInterne() {
     `[scan] apres enrichissement: ${sansPrixApresEnrichissement}/${nouvelles.length} candidat(s) toujours sans prix detecte`
   );
 
+  // Detail par site pour reperer facilement quelle source pose encore probleme
+  const parSite = {};
+  for (const listing of nouvelles) {
+    parSite[listing.source] = parSite[listing.source] || { total: 0, sansPrix: 0 };
+    parSite[listing.source].total += 1;
+    if (!listing.price) parSite[listing.source].sansPrix += 1;
+  }
+  for (const [source, stats] of Object.entries(parSite)) {
+    console.log(`[scan]   - ${source}: ${stats.sansPrix}/${stats.total} sans prix`);
+  }
+
   const aNotifier = nouvelles.filter((l) => passesPriceAndRooms(l, criteria));
 
   console.log(`[scan] ${aNotifier.length} annonce(s) a notifier apres verification prix/chambres`);
