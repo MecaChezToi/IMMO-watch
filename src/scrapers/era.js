@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromUrl, extractLocalityFromPostalCode } = require("../localityUtil");
 
 // ATTENTION: scraper "best effort", structure HTML non verifiee en detail (pas de
@@ -26,6 +27,7 @@ async function scrapeEra(criteria) {
     $("a").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       if (/\/(contact|estimation|about|nos-services|equipe|a-louer|mentions-legales|cookies)/i.test(href)) return;
       const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
       if (!idMatch) return;
@@ -48,7 +50,7 @@ async function scrapeEra(criteria) {
         id,
         source: "era",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://www.era.be${href}`,
+        url: resolveUrl("www.era.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: terrainMatch ? terrainMatch[1] : null,

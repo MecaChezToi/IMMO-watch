@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromUrl } = require("../localityUtil");
 
 // El'Immo tourne sur le CMS "Whise" (confirme: "Powered by Whise" en pied de page).
@@ -49,6 +50,7 @@ async function scrapeElImmo(criteria) {
     $("a").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       if (/\/(page|Contact|Estimation|immobilier-neuf)/i.test(href)) return;
       const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
       if (!idMatch) return;
@@ -65,7 +67,7 @@ async function scrapeElImmo(criteria) {
         id,
         source: "elimmo",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://www.el-immo.be${href}`,
+        url: resolveUrl("www.el-immo.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,

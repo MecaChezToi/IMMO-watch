@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromUrl } = require("../localityUtil");
 
 const HEADERS = {
@@ -32,6 +33,7 @@ async function scrapeZimmo(criteria) {
       $("a[href*='/id/'], a[href*='-detail-']").each((_, el) => {
         const href = $(el).attr("href");
         if (!href) return;
+      if (isIrrelevantHref(href)) return;
         const idMatch = href.match(/(\d{5,})/);
         if (!idMatch) return;
         const id = `zimmo-${idMatch[1]}`;
@@ -47,7 +49,7 @@ async function scrapeZimmo(criteria) {
           id,
           source: "zimmo",
           title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-          url: href.startsWith("http") ? href : `https://www.zimmo.be${href}`,
+          url: resolveUrl("www.zimmo.be", href),
           price: priceMatch ? priceMatch[1] + " €" : null,
           bedrooms: bedroomMatch ? bedroomMatch[1] : null,
           landArea: null,

@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 
 // ATTENTION: contrairement aux autres scrapers, celui-ci n'a pas pu etre verifie
 // contre le vrai HTML du site (probleme de redirection lors des tests). C'est un
@@ -35,6 +36,7 @@ async function scrapeRoufosse(criteria) {
     $("a").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       if (/\/(contact|estimation|about|nos-services|equipe)/i.test(href)) return;
       const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
       if (!idMatch) return;
@@ -54,7 +56,7 @@ async function scrapeRoufosse(criteria) {
         id,
         source: "roufosse",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://www.roufosse.be${href}`,
+        url: resolveUrl("www.roufosse.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,

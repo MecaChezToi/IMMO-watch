@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 
 // ATTENTION: ce scraper n'a pas pu etre verifie contre le vrai HTML du site -
 // bhsimmo.be a un robots.txt qui bloque explicitement l'acces automatise, donc
@@ -38,6 +39,7 @@ async function scrapeBhsImmo(criteria) {
     $("a").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       if (/\/(contact|estimation|about|nos-services|equipe|a-louer)/i.test(href)) return;
       const idMatch = href.match(/(\d{4,})(?:[/?#]|$)/);
       if (!idMatch) return;
@@ -57,7 +59,7 @@ async function scrapeBhsImmo(criteria) {
         id,
         source: "bhsimmo",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://bhsimmo.be${href}`,
+        url: resolveUrl("bhsimmo.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,

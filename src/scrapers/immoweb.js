@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromUrl, POSTAL_CODES } = require("../localityUtil");
 
 // NOTE IMPORTANTE:
@@ -43,7 +44,7 @@ function buildSearchUrl(criteria) {
   if (criteria.prix_min) params.set("minPrice", criteria.prix_min);
   if (criteria.chambres_min) params.set("minBedroomCount", criteria.chambres_min);
 
-  return `https://www.immoweb.be/fr/search/${criteria.type_bien || "house"}/${
+  return `https://www.immoweb.be/en/search/${criteria.type_bien || "house"}/${
     criteria.transaction || "for-sale"
   }?${params.toString()}`;
 }
@@ -67,6 +68,7 @@ async function scrapeImmoweb(criteria) {
     $("a[href*='/classified/'], a[href*='/annonce/']").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       const idMatch = href.match(/(\d{6,})/);
       if (!idMatch) return;
       const id = `immoweb-${idMatch[1]}`;
@@ -83,7 +85,7 @@ async function scrapeImmoweb(criteria) {
         id,
         source: "immoweb",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://www.immoweb.be${href}`,
+        url: resolveUrl("www.immoweb.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,

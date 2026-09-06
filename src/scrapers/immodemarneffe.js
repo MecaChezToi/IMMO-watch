@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 
 // Immobilière de Marneffe tourne sur le CMS "Whise" (tres repandu chez les agences
 // immo belges). Ce CMS expose un endpoint AJAX qui renvoie directement les biens
@@ -57,6 +58,7 @@ async function scrapeImmoDeMarneffe(criteria) {
     $("a").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       // Cherche un ID numerique en fin d'URL (pattern classique Whise pour une fiche bien),
       // en excluant les liens de nav statiques du site (page/, Contact, Estimation...)
       if (/\/(page|Contact|Estimation|immobilier-neuf)/i.test(href)) return;
@@ -78,7 +80,7 @@ async function scrapeImmoDeMarneffe(criteria) {
         id,
         source: "immodemarneffe",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://www.immodemarneffe.be${href}`,
+        url: resolveUrl("www.immodemarneffe.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: null,

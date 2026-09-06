@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromUrl } = require("../localityUtil");
 
 const HEADERS = {
@@ -35,6 +36,7 @@ async function scrapeImmovlan(criteria) {
       $("a[href*='/detail/'], a[href*='/te-koop/']").each((_, el) => {
         const href = $(el).attr("href");
         if (!href) return;
+      if (isIrrelevantHref(href)) return;
         const idMatch = href.match(/(\d{6,})/);
         if (!idMatch) return;
         const id = `immovlan-${idMatch[1]}`;
@@ -50,7 +52,7 @@ async function scrapeImmovlan(criteria) {
           id,
           source: "immovlan",
           title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-          url: href.startsWith("http") ? href : `https://www.immovlan.be${href}`,
+          url: resolveUrl("www.immovlan.be", href),
           price: priceMatch ? priceMatch[1] + " €" : null,
           bedrooms: bedroomMatch ? bedroomMatch[1] : null,
           landArea: null,

@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { isIrrelevantHref, resolveUrl } = require("../urlUtil");
 const { extractLocalityFromPostalCode } = require("../localityUtil");
 
 // AG Immobilière (WordPress) - structure confirmee: page /a-vendre/ liste les biens
@@ -26,6 +27,7 @@ async function scrapeAgImmobiliere(criteria) {
     $("a[href*='/biens-a-vendre/']").each((_, el) => {
       const href = $(el).attr("href");
       if (!href) return;
+      if (isIrrelevantHref(href)) return;
       const idMatch = href.match(/ref(\d+)/i);
       if (!idMatch) return;
       const id = `agimmobiliere-${idMatch[1]}`;
@@ -42,7 +44,7 @@ async function scrapeAgImmobiliere(criteria) {
         id,
         source: "agimmobiliere",
         title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-        url: href.startsWith("http") ? href : `https://www.agimmobiliere.be${href}`,
+        url: resolveUrl("www.agimmobiliere.be", href),
         price: priceMatch ? priceMatch[1] + " €" : null,
         bedrooms: bedroomMatch ? bedroomMatch[1] : null,
         landArea: terrainMatch ? terrainMatch[1] : null,
