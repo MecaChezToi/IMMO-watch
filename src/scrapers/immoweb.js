@@ -3,15 +3,19 @@ const cheerio = require("cheerio");
 const { extractLocalityFromUrl } = require("../localityUtil");
 
 // NOTE IMPORTANTE:
-// Immoweb est protege par Cloudflare et peut bloquer les IP de serveur/VPS
-// (contrairement a une IP residentielle "normale"). Si ce scraper renvoie
-// 0 resultat ou une erreur 403, deux options:
-//   1) Reduire la frequence de scan (ex: 1x/heure au lieu de toutes les 20 min)
-//   2) Passer par un service de proxy residentiel (ScraperAPI, Zyte, Bright Data...)
-//      et l'injecter dans l'URL axios ci-dessous.
-// Les selecteurs HTML ci-dessous sont bases sur la structure connue du site
-// et sur les patterns d'URL (/classified/) qui sont plus stables que les
-// classes CSS. Si Immoweb change sa structure, c'est ici qu'il faut ajuster.
+// Immoweb est protege par Cloudflare et BLOQUE LES IP DE DATACENTER (confirme:
+// plusieurs outils de scraping tiers documentent explicitement ce blocage et
+// recommandent un proxy residentiel belge pour passer). Ton VPS (Hetzner,
+// datacenter allemand) tombe dans la categorie bloquee. Meme avec l'URL de
+// recherche correcte ci-dessous, il est possible que ce scraper ne remonte
+// jamais de resultats utilisables depuis ton VPS. Si les logs montrent "0
+// candidats" en continu pour immoweb specifiquement (alors que roufosse/bhsimmo/
+// immodemarneffe remontent des choses), c'est probablement ce blocage - la seule
+// solution fiable est un service de proxy residentiel payant (ScraperAPI, Zyte,
+// Bright Data, Apify...), pas quelque chose qu'on peut resoudre gratuitement.
+//
+// Parametre de recherche confirme fonctionnel: postalCodes (codes postaux BE,
+// separes par des virgules), sur /en/search/<type>/<transaction>?countries=BE.
 
 const HEADERS = {
   "User-Agent":
@@ -19,66 +23,91 @@ const HEADERS = {
   "Accept-Language": "fr-BE,fr;q=0.9,en;q=0.8",
 };
 
-function buildSearchUrl(criteria, localite) {
+// Codes postaux pour les communes courantes de la region de Liege. Complete cette
+// liste si tu ajoutes des localites via /localites qui n'y figurent pas encore.
+const POSTAL_CODES = {
+  "liège": "4000",
+  liege: "4000",
+  flémalle: "4400",
+  flemalle: "4400",
+  seraing: "4100",
+  herstal: "4040",
+  ans: "4430",
+  "grâce-hollogne": "4460",
+  "grace-hollogne": "4460",
+};
+
+function resolvePostalCodes(localites) {
+  const codes = localites
+    .map((loc) => POSTAL_CODES[loc.toLowerCase()])
+    .filter(Boolean);
+  return [...new Set(codes)];
+}
+
+function buildSearchUrl(criteria) {
+  const codes = resolvePostalCodes(criteria.localites);
   const params = new URLSearchParams({
     countries: "BE",
-    maxPrice: criteria.prix_max || "",
-    minPrice: criteria.prix_min || "",
-    minBedroomCount: criteria.chambres_min || "",
-    minSurface: criteria.superficie_habitable_min_m2 || "",
     orderBy: "newest",
   });
-  return `https://www.immoweb.be/fr/recherche/${criteria.type_bien || "house"}/${
+  if (codes.length) params.set("postalCodes", codes.join(","));
+  if (criteria.prix_max) params.set("maxPrice", criteria.prix_max);
+  if (criteria.prix_min) params.set("minPrice", criteria.prix_min);
+  if (criteria.chambres_min) params.set("minBedroomCount", criteria.chambres_min);
+
+  return `https://www.immoweb.be/fr/search/${criteria.type_bien || "house"}/${
     criteria.transaction || "for-sale"
-  }/${encodeURIComponent(localite)}?${params.toString()}`;
+  }?${params.toString()}`;
 }
 
 async function scrapeImmoweb(criteria) {
   const results = [];
+  const url = buildSearchUrl(criteria);
 
-  for (const localite of criteria.localites) {
-    const url = buildSearchUrl(criteria, localite);
-    try {
-      const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 15000 });
-      const $ = cheerio.load(html);
+  const inconnues = criteria.localites.filter((loc) => !POSTAL_CODES[loc.toLowerCase()]);
+  if (inconnues.length) {
+    console.warn(
+      `[immoweb] code postal inconnu pour: ${inconnues.join(", ")} - ces villes ne seront pas cherchees sur Immoweb tant qu'un code postal n'est pas ajoute dans src/scrapers/immoweb.js`
+    );
+  }
 
-      const seenIdsThisPage = new Set();
+  try {
+    const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 15000 });
+    const $ = cheerio.load(html);
+    const seenIdsThisPage = new Set();
 
-      $("a[href*='/classified/'], a[href*='/annonce/']").each((_, el) => {
-        const href = $(el).attr("href");
-        if (!href) return;
-        const idMatch = href.match(/(\d{6,})/);
-        if (!idMatch) return;
-        const id = `immoweb-${idMatch[1]}`;
-        if (seenIdsThisPage.has(id)) return;
-        seenIdsThisPage.add(id);
+    $("a[href*='/classified/'], a[href*='/annonce/']").each((_, el) => {
+      const href = $(el).attr("href");
+      if (!href) return;
+      const idMatch = href.match(/(\d{6,})/);
+      if (!idMatch) return;
+      const id = `immoweb-${idMatch[1]}`;
+      if (seenIdsThisPage.has(id)) return;
+      seenIdsThisPage.add(id);
 
-        const card = $(el).parent().parent(); // scope borne (2 niveaux) plutot qu'un closest() qui peut remonter trop large
-        const cardText = card.text().replace(/\s+/g, " ").trim();
+      const card = $(el).parent().parent(); // scope borne (2 niveaux) plutot qu'un closest() qui peut remonter trop large
+      const cardText = card.text().replace(/\s+/g, " ").trim();
 
-        const priceMatch = cardText.match(/([\d.,]{4,})\s*€/);
-        const bedroomMatch = cardText.match(/(\d+)\s*(ch\.|chambre)/i);
+      const priceMatch = cardText.match(/([\d.,]{4,})\s*€/);
+      const bedroomMatch = cardText.match(/(\d+)\s*(ch\.|chambre)/i);
 
-        results.push({
-          id,
-          source: "immoweb",
-          title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
-          url: href.startsWith("http") ? href : `https://www.immoweb.be${href}`,
-          price: priceMatch ? priceMatch[1] + " €" : null,
-          bedrooms: bedroomMatch ? bedroomMatch[1] : null,
-          landArea: null,
-          // On ne fait plus confiance au fait que la recherche par URL ait vraiment
-          // filtre sur cette ville (constat: Immoweb renvoie parfois des resultats
-          // hors zone). On verifie la vraie localite dans l'URL de l'annonce.
-          locality: extractLocalityFromUrl(href, criteria.localites) || null,
-        });
+      results.push({
+        id,
+        source: "immoweb",
+        title: $(el).text().trim().slice(0, 120) || cardText.slice(0, 80),
+        url: href.startsWith("http") ? href : `https://www.immoweb.be${href}`,
+        price: priceMatch ? priceMatch[1] + " €" : null,
+        bedrooms: bedroomMatch ? bedroomMatch[1] : null,
+        landArea: null,
+        locality: extractLocalityFromUrl(href, criteria.localites) || null,
       });
-    } catch (err) {
-      console.error(`[immoweb] erreur sur ${localite}:`, err.response?.status || err.message);
-    }
+    });
+  } catch (err) {
+    console.error(`[immoweb] erreur:`, err.response?.status || err.message);
   }
 
   return results;
 }
 
 module.exports = { scrapeImmoweb };
+
