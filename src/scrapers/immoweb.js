@@ -1,6 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { extractLocalityFromUrl } = require("../localityUtil");
+const { extractLocalityFromUrl, POSTAL_CODES } = require("../localityUtil");
 
 // NOTE IMPORTANTE:
 // Immoweb est protege par Cloudflare et BLOQUE LES IP DE DATACENTER (confirme:
@@ -25,18 +25,6 @@ const HEADERS = {
 
 // Codes postaux pour les communes courantes de la region de Liege. Complete cette
 // liste si tu ajoutes des localites via /localites qui n'y figurent pas encore.
-const POSTAL_CODES = {
-  "liège": "4000",
-  liege: "4000",
-  flémalle: "4400",
-  flemalle: "4400",
-  seraing: "4100",
-  herstal: "4040",
-  ans: "4430",
-  "grâce-hollogne": "4460",
-  "grace-hollogne": "4460",
-};
-
 function resolvePostalCodes(localites) {
   const codes = localites
     .map((loc) => POSTAL_CODES[loc.toLowerCase()])

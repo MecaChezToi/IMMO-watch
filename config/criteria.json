@@ -23,6 +23,14 @@
     "zimmo": true,
     "immodemarneffe": true,
     "roufosse": true,
-    "bhsimmo": true
+    "bhsimmo": true,
+    "elimmo": true,
+    "agimmobiliere": true,
+    "era": true,
+    "infinityimmo": true,
+    "ecoimmo": true,
+    "igg": true,
+    "skyimmo": true,
+    "notaire": true
   }
 }

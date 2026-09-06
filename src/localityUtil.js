@@ -20,4 +20,27 @@ function extractLocalityFromUrl(href, localites) {
   return null;
 }
 
-module.exports = { normalize, extractLocalityFromUrl };
+// Codes postaux pour les communes courantes de la region de Liege. Sert de filet
+// de secours quand le nom de ville n'apparait pas tel quel dans l'URL/texte, mais
+// que le code postal (souvent plus stable) y figure.
+const POSTAL_CODES = {
+  "liège": "4000",
+  liege: "4000",
+  flémalle: "4400",
+  flemalle: "4400",
+  seraing: "4100",
+  herstal: "4040",
+  ans: "4430",
+  "grâce-hollogne": "4460",
+  "grace-hollogne": "4460",
+};
+
+function extractLocalityFromPostalCode(text, localites) {
+  for (const loc of localites) {
+    const code = POSTAL_CODES[loc.toLowerCase()];
+    if (code && text.includes(code)) return loc;
+  }
+  return null;
+}
+
+module.exports = { normalize, extractLocalityFromUrl, POSTAL_CODES, extractLocalityFromPostalCode };

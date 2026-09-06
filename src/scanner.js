@@ -4,6 +4,14 @@ const { scrapeZimmo } = require("./scrapers/zimmo");
 const { scrapeImmoDeMarneffe } = require("./scrapers/immodemarneffe");
 const { scrapeRoufosse } = require("./scrapers/roufosse");
 const { scrapeBhsImmo } = require("./scrapers/bhsimmo");
+const { scrapeElImmo } = require("./scrapers/elimmo");
+const { scrapeAgImmobiliere } = require("./scrapers/agimmobiliere");
+const { scrapeEra } = require("./scrapers/era");
+const { scrapeInfinityImmo } = require("./scrapers/infinityimmo");
+const { scrapeEcoImmo } = require("./scrapers/ecoimmo");
+const { scrapeIgg } = require("./scrapers/igg");
+const { scrapeSkyImmo } = require("./scrapers/skyimmo");
+const { scrapeNotaire } = require("./scrapers/notaire");
 const { loadSeenIds, saveSeenIds } = require("./store");
 const { notifyListing } = require("./telegram");
 const { enrichFromDetailPage } = require("./detailFetcher");
@@ -102,6 +110,30 @@ async function runScanInterne() {
   if (criteria.sites_actifs?.bhsimmo) {
     allListings = allListings.concat(await scrapeBhsImmo(criteria));
   }
+  if (criteria.sites_actifs?.elimmo) {
+    allListings = allListings.concat(await scrapeElImmo(criteria));
+  }
+  if (criteria.sites_actifs?.agimmobiliere) {
+    allListings = allListings.concat(await scrapeAgImmobiliere(criteria));
+  }
+  if (criteria.sites_actifs?.era) {
+    allListings = allListings.concat(await scrapeEra(criteria));
+  }
+  if (criteria.sites_actifs?.infinityimmo) {
+    allListings = allListings.concat(await scrapeInfinityImmo(criteria));
+  }
+  if (criteria.sites_actifs?.ecoimmo) {
+    allListings = allListings.concat(await scrapeEcoImmo(criteria));
+  }
+  if (criteria.sites_actifs?.igg) {
+    allListings = allListings.concat(await scrapeIgg(criteria));
+  }
+  if (criteria.sites_actifs?.skyimmo) {
+    allListings = allListings.concat(await scrapeSkyImmo(criteria));
+  }
+  if (criteria.sites_actifs?.notaire) {
+    allListings = allListings.concat(await scrapeNotaire(criteria));
+  }
 
   console.log(`[scan] ${allListings.length} annonces recuperees au total`);
 
@@ -121,6 +153,11 @@ async function runScanInterne() {
   for (const listing of nouvelles) {
     await enrichFromDetailPage(listing);
   }
+
+  const sansPrixApresEnrichissement = nouvelles.filter((l) => !l.price).length;
+  console.log(
+    `[scan] apres enrichissement: ${sansPrixApresEnrichissement}/${nouvelles.length} candidat(s) toujours sans prix detecte`
+  );
 
   const aNotifier = nouvelles.filter((l) => passesPriceAndRooms(l, criteria));
 

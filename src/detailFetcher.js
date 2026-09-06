@@ -20,17 +20,32 @@ async function enrichFromDetailPage(listing) {
 
     const ogTitle = $('meta[property="og:title"]').attr("content") || "";
     const ogDesc = $('meta[property="og:description"]').attr("content") || "";
-    const combined = `${ogTitle} ${ogDesc}`;
+
+    // Tente aussi le JSON-LD (schema.org), courant sur les sites immo pour le SEO -
+    // souvent plus fiable/structure qu'un texte libre.
+    let jsonLdText = "";
+    $('script[type="application/ld+json"]').each((_, el) => {
+      jsonLdText += " " + $(el).contents().text();
+    });
+
+    // En dernier recours, le texte visible de la page entiere. Comme il n'y a
+    // qu'UNE SEULE annonce par page ici (contrairement aux pages de recherche),
+    // scanner tout le texte est fiable, pas de risque de melanger plusieurs biens.
+    const bodyText = $("body").text().replace(/\s+/g, " ").slice(0, 5000);
+
+    const combined = `${ogTitle} ${ogDesc} ${jsonLdText} ${bodyText}`;
 
     // On ecrase les valeurs deja presentes (potentiellement fausses, recuperees depuis
     // une carte de recherche mal delimitee) par celles, plus fiables, de la fiche elle-meme.
-    const priceMatch = combined.match(/([\d][\d.,]{3,})\s*€/);
+    const priceMatch =
+      combined.match(/"price"\s*:\s*"?(\d[\d.,]{3,})"?/i) ||
+      combined.match(/([\d][\d.,]{3,})\s*€/);
     if (priceMatch) listing.price = priceMatch[1] + " €";
 
-    const bedroomMatch = combined.match(/(\d+)\s*(ch\.|chambre)/i);
+    const bedroomMatch = combined.match(/(\d+)\s*(ch\.|chambre|bedroom)/i);
     if (bedroomMatch) listing.bedrooms = bedroomMatch[1];
 
-    const terrainMatch = combined.match(/terrain[^\d]{0,10}(\d[\d.,]*)\s*m²/i);
+    const terrainMatch = combined.match(/terrain[^\d]{0,15}(\d[\d.,]*)\s*m²/i);
     if (terrainMatch) listing.landArea = terrainMatch[1];
 
     if (ogTitle) listing.title = ogTitle.slice(0, 150);
