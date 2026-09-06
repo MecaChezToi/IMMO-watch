@@ -1,5 +1,6 @@
 const axios = require("axios");
 const { loadCriteria, saveCriteria } = require("./criteriaStore");
+const { runScan } = require("./scanner");
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -45,6 +46,7 @@ const HELP_TEXT =
   `/localites Liège, Flémalle, Seraing — remplace la liste des villes (séparées par des virgules)\n` +
   `/mots_exclus ruine, à rénover — annonces contenant un de ces mots dans le titre sont ignorées (vide = aucun filtre)\n` +
   `/criteres — affiche les critères actuels\n` +
+  `/scan — lance un scan immédiat, sans attendre le prochain cycle\n` +
   `/aide — affiche ce message`;
 
 async function handleCommand(text) {
@@ -118,6 +120,22 @@ async function handleCommand(text) {
 
     case "/criteres":
       return sendReply(formatCriteres(criteria));
+
+    case "/scan": {
+      sendReply("🔍 Scan lancé, ça peut prendre une minute ou deux...");
+      try {
+        const resultat = await runScan();
+        if (resultat?.skipped) {
+          return sendReply("⏳ Un scan était déjà en cours, celui-ci a été ignoré.");
+        }
+        return sendReply(
+          `✅ Scan terminé: ${resultat.total} annonces vues, ${resultat.candidats} candidates après filtre localité, ${resultat.notifiees} notifiée(s).`
+        );
+      } catch (err) {
+        console.error("[telegram-commands] erreur /scan:", err.message);
+        return sendReply("⚠️ Le scan a échoué, regarde les logs.");
+      }
+    }
 
     case "/aide":
     case "/start":
